@@ -13,15 +13,20 @@ local allowedUsers = {
 
 if not allowedUsers[LP.UserId] then return end
 
-local logoId = "rbxassetid://95706946929530"
-local bestIconId = "rbxassetid://75859610542570"
-local stealthIconId = "rbxthumb://type=Asset&id=524302419&w=150&h=150"
-local macroIconId = "rbxthumb://type=Asset&id=101215635447507&w=150&h=150"
-local notifyIconId = "rbxassetid://5544769896"
+local function asset(id)
+	return "rbxthumb://type=Asset&id=" .. tostring(id) .. "&w=150&h=150"
+end
+
+local logoId = asset(95706946929530)
+local bestIconId = asset(123307836187460)
+local stealthIconId = asset(127295787879229)
+local macroIconId = asset(101215635447507)
+local notifyIconId = asset(131285912734006)
 
 local visualEnabled = false
 local focusEnabled = true
 local macroEnabled = false
+local macroRunning = false
 local notificationsEnabled = true
 local fovVisible = false
 local shiftLockWasActive = false
@@ -35,6 +40,8 @@ local visualColor = Color3.fromRGB(0, 0, 0)
 local visualBind = {mod = "Command", key = Enum.KeyCode.C}
 local disableBind = {mod = "Alt", key = Enum.KeyCode.Z}
 local focusBind = {mod = "Alt", key = Enum.KeyCode.F}
+local macroQBind = {mod = "None", key = Enum.KeyCode.Q}
+local macroEBind = {mod = "None", key = Enum.KeyCode.E}
 
 local highlights = {}
 local held = {Command = false, Alt = false, Shift = false, Ctrl = false}
@@ -45,7 +52,7 @@ local theme = {
 	card = Color3.fromRGB(20, 20, 30),
 	button = Color3.fromRGB(75, 75, 96),
 	button2 = Color3.fromRGB(92, 92, 118),
-	buttonHover = Color3.fromRGB(110, 110, 140),
+	buttonHover = Color3.fromRGB(118, 118, 150),
 	accent = Color3.fromRGB(255, 255, 255),
 	accent2 = Color3.fromRGB(205, 210, 230),
 	text = Color3.fromRGB(255, 255, 255),
@@ -102,15 +109,15 @@ local function glassFrame(obj, light)
 	local g = Instance.new("UIGradient")
 	g.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-		ColorSequenceKeypoint.new(0.15, Color3.fromRGB(220, 225, 245)),
-		ColorSequenceKeypoint.new(0.42, Color3.fromRGB(95, 100, 125)),
-		ColorSequenceKeypoint.new(0.72, Color3.fromRGB(30, 32, 46)),
+		ColorSequenceKeypoint.new(0.16, Color3.fromRGB(230, 235, 255)),
+		ColorSequenceKeypoint.new(0.38, Color3.fromRGB(130, 138, 170)),
+		ColorSequenceKeypoint.new(0.68, Color3.fromRGB(34, 36, 52)),
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 8, 14))
 	})
 	g.Transparency = light and NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.32),
-		NumberSequenceKeypoint.new(0.28, 0.52),
-		NumberSequenceKeypoint.new(0.68, 0.74),
+		NumberSequenceKeypoint.new(0, 0.28),
+		NumberSequenceKeypoint.new(0.28, 0.48),
+		NumberSequenceKeypoint.new(0.68, 0.72),
 		NumberSequenceKeypoint.new(1, 0.88)
 	}) or NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0.48),
@@ -126,9 +133,9 @@ end
 local function glassButton(obj)
 	local g = Instance.new("UIGradient")
 	g.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(175, 180, 205)),
-		ColorSequenceKeypoint.new(0.36, Color3.fromRGB(105, 110, 140)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(54, 56, 78))
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(190, 195, 220)),
+		ColorSequenceKeypoint.new(0.36, Color3.fromRGB(118, 122, 155)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(55, 58, 82))
 	})
 	g.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0),
@@ -137,6 +144,23 @@ local function glassButton(obj)
 	})
 	g.Rotation = 25
 	g.Parent = obj
+	return g
+end
+
+local function rainbow(obj)
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 220, 255)),
+		ColorSequenceKeypoint.new(0.15, Color3.fromRGB(130, 120, 255)),
+		ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 110, 240)),
+		ColorSequenceKeypoint.new(0.48, Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(0.64, Color3.fromRGB(105, 255, 200)),
+		ColorSequenceKeypoint.new(0.8, Color3.fromRGB(110, 165, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 95, 210))
+	})
+	g.Offset = Vector2.new(-1, 0)
+	g.Parent = obj
+	TweenService:Create(g, TweenInfo.new(0.95, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {Offset = Vector2.new(1, 0)}):Play()
 	return g
 end
 
@@ -150,7 +174,6 @@ local function shine(parent, z, h)
 	f.ZIndex = z or 2
 	f.Parent = parent
 	corner(f, 15)
-
 	local g = Instance.new("UIGradient")
 	g.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 255, 255))
 	g.Transparency = NumberSequence.new({
@@ -160,7 +183,6 @@ local function shine(parent, z, h)
 	})
 	g.Rotation = 18
 	g.Parent = f
-
 	return f
 end
 
@@ -197,7 +219,6 @@ fovStroke.Parent = fovCircle
 
 local function notify(text)
 	if not notificationsEnabled then return end
-
 	local card = Instance.new("Frame")
 	card.Size = UDim2.new(0, 342, 0, 64)
 	card.Position = UDim2.new(0, 48, 0, 0)
@@ -206,30 +227,24 @@ local function notify(text)
 	card.BorderSizePixel = 0
 	card.ClipsDescendants = true
 	card.Parent = notifyHolder
-
 	local scale = Instance.new("UIScale")
 	scale.Scale = 0.94
 	scale.Parent = card
-
 	corner(card, 18)
 	glassFrame(card, true)
 	shine(card, 2, 28)
-
 	local st = stroke(card, 1, theme.stroke, 1.15)
 	local sg = Instance.new("UIGradient")
 	sg.Color = ColorSequence.new(theme.accent, theme.accent2)
 	sg.Parent = st
-
 	local glow = Instance.new("ImageLabel")
 	glow.Size = UDim2.new(0, 82, 0, 82)
 	glow.Position = UDim2.new(0, -13, 0.5, -41)
 	glow.BackgroundTransparency = 1
 	glow.Image = notifyIconId
-	glow.ImageColor3 = Color3.fromRGB(255, 255, 255)
 	glow.ImageTransparency = 1
 	glow.ZIndex = 5
 	glow.Parent = card
-
 	local iconBox = Instance.new("Frame")
 	iconBox.Size = UDim2.new(0, 38, 0, 38)
 	iconBox.Position = UDim2.new(0, 14, 0.5, -19)
@@ -241,16 +256,15 @@ local function notify(text)
 	corner(iconBox, 13)
 	stroke(iconBox, 1, theme.stroke, 1)
 	glassButton(iconBox)
-
 	local icon = Instance.new("ImageLabel")
 	icon.Size = UDim2.new(0, 28, 0, 28)
 	icon.Position = UDim2.new(0.5, -14, 0.5, -14)
 	icon.BackgroundTransparency = 1
 	icon.Image = notifyIconId
 	icon.ImageTransparency = 1
+	icon.ScaleType = Enum.ScaleType.Fit
 	icon.ZIndex = 7
 	icon.Parent = iconBox
-
 	local title = Instance.new("TextLabel")
 	title.Size = UDim2.new(1, -78, 0, 20)
 	title.Position = UDim2.new(0, 64, 0, 11)
@@ -263,7 +277,6 @@ local function notify(text)
 	title.ZIndex = 8
 	title.Parent = card
 	forceWhite(title)
-
 	local body = Instance.new("TextLabel")
 	body.Size = UDim2.new(1, -78, 0, 18)
 	body.Position = UDim2.new(0, 64, 0, 34)
@@ -276,7 +289,6 @@ local function notify(text)
 	body.ZIndex = 8
 	body.Parent = card
 	forceWhite(body)
-
 	local barBack = Instance.new("Frame")
 	barBack.Size = UDim2.new(1, -28, 0, 2)
 	barBack.Position = UDim2.new(0, 14, 1, -7)
@@ -286,7 +298,6 @@ local function notify(text)
 	barBack.ZIndex = 9
 	barBack.Parent = card
 	corner(barBack, 8)
-
 	local bar = Instance.new("Frame")
 	bar.Size = UDim2.new(1, 0, 1, 0)
 	bar.BackgroundColor3 = theme.accent
@@ -295,11 +306,9 @@ local function notify(text)
 	bar.ZIndex = 10
 	bar.Parent = barBack
 	corner(bar, 8)
-
 	local bg = Instance.new("UIGradient")
 	bg.Color = ColorSequence.new(theme.accent, theme.accent2)
 	bg.Parent = bar
-
 	tween(card, 0.22, {Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.08})
 	tween(scale, 0.22, {Scale = 1})
 	tween(st, 0.2, {Transparency = 0.12})
@@ -310,7 +319,6 @@ local function notify(text)
 	tween(glow, 0.16, {ImageTransparency = 0.72})
 	tween(bar, 0.16, {BackgroundTransparency = 0})
 	TweenService:Create(bar, TweenInfo.new(1.25, Enum.EasingStyle.Linear), {Size = UDim2.new(0, 0, 1, 0)}):Play()
-
 	task.delay(1.25, function()
 		if not card or not card.Parent then return end
 		tween(card, 0.18, {Position = UDim2.new(0, 42, 0, 0), BackgroundTransparency = 1})
@@ -336,6 +344,7 @@ main.BackgroundColor3 = theme.bg
 main.BackgroundTransparency = 0.2
 main.BorderSizePixel = 0
 main.ClipsDescendants = true
+main.Visible = false
 main.Parent = gui
 
 corner(main, 24)
@@ -408,12 +417,10 @@ local function makeMinIcon(parent)
 	holder.BackgroundTransparency = 1
 	holder.ZIndex = parent.ZIndex + 1
 	holder.Parent = parent
-
 	local pieces = {
 		{0, 0, 7, 2}, {0, 0, 2, 7}, {13, 0, 7, 2}, {18, 0, 2, 7},
 		{0, 13, 2, 7}, {0, 18, 7, 2}, {13, 18, 7, 2}, {18, 13, 2, 7}
 	}
-
 	for _, d in ipairs(pieces) do
 		local p = Instance.new("Frame")
 		p.Size = UDim2.new(0, d[3], 0, d[4])
@@ -462,7 +469,7 @@ bubbleLogo.Size = UDim2.new(0, 42, 0, 42)
 bubbleLogo.Position = UDim2.new(0.5, -21, 0.5, -21)
 bubbleLogo.BackgroundTransparency = 1
 bubbleLogo.Image = logoId
-bubbleLogo.ImageColor3 = Color3.fromRGB(255, 255, 255)
+bubbleLogo.ScaleType = Enum.ScaleType.Fit
 bubbleLogo.ZIndex = 52
 bubbleLogo.Parent = logoBubble
 
@@ -501,7 +508,7 @@ logo.Size = UDim2.new(0, 33, 0, 33)
 logo.Position = UDim2.new(0.5, -16.5, 0.5, -16.5)
 logo.BackgroundTransparency = 1
 logo.Image = logoId
-logo.ImageColor3 = Color3.fromRGB(255, 255, 255)
+logo.ScaleType = Enum.ScaleType.Fit
 logo.ZIndex = 6
 logo.Parent = logoBox
 
@@ -553,9 +560,7 @@ local function makeTab(tabName, iconId, order)
 	btn.Parent = sidebar
 	corner(btn, 15)
 	glassButton(btn)
-
 	local st = stroke(btn, order == 1 and 0.1 or 0.38, theme.stroke, 1)
-
 	local bar = Instance.new("Frame")
 	bar.Size = UDim2.new(0, 3, 0, 31)
 	bar.Position = UDim2.new(0, 0, 0.5, -15)
@@ -565,7 +570,6 @@ local function makeTab(tabName, iconId, order)
 	bar.ZIndex = 7
 	bar.Parent = btn
 	corner(bar, 8)
-
 	local iconBox = Instance.new("Frame")
 	iconBox.Size = UDim2.new(0, 36, 0, 36)
 	iconBox.Position = UDim2.new(0, 14, 0.5, -18)
@@ -577,7 +581,6 @@ local function makeTab(tabName, iconId, order)
 	corner(iconBox, 12)
 	stroke(iconBox, order == 1 and 0.12 or 0.34, theme.stroke, 1)
 	glassButton(iconBox)
-
 	local icon = Instance.new("ImageLabel")
 	icon.Size = UDim2.new(0, 26, 0, 26)
 	icon.Position = UDim2.new(0.5, -13, 0.5, -13)
@@ -587,7 +590,6 @@ local function makeTab(tabName, iconId, order)
 	icon.ScaleType = Enum.ScaleType.Fit
 	icon.ZIndex = 8
 	icon.Parent = iconBox
-
 	local txt = Instance.new("TextLabel")
 	txt.Size = UDim2.new(1, -66, 1, 0)
 	txt.Position = UDim2.new(0, 62, 0, 0)
@@ -599,16 +601,13 @@ local function makeTab(tabName, iconId, order)
 	txt.ZIndex = 6
 	txt.Parent = btn
 	forceWhite(txt)
-
 	local page = Instance.new("Frame")
 	page.Size = UDim2.new(1, 0, 1, 0)
 	page.BackgroundTransparency = 1
 	page.Visible = order == 1
 	page.Parent = content
-
 	tabButtons[tabName] = {Button = btn, Bar = bar, Text = txt, IconBox = iconBox, Stroke = st}
 	pages[tabName] = page
-
 	return btn, page
 end
 
@@ -682,25 +681,26 @@ local function makeButton(parent, text, x, y, w, h)
 	corner(b, 13)
 	stroke(b, 0.08, theme.stroke, 1.15)
 	glassButton(b)
-
 	b.MouseEnter:Connect(function()
 		tween(b, 0.14, {BackgroundColor3 = theme.buttonHover})
 	end)
-
 	b.MouseLeave:Connect(function()
 		tween(b, 0.14, {BackgroundColor3 = theme.button2})
 	end)
+	return b
+end
 
+local function makeSmallButton(parent, text, x, y, w, h)
+	local b = makeButton(parent, text, x, y, w, h)
+	b.TextSize = 12
 	return b
 end
 
 local function makeSlider(parent, title, x, y, w, min, max, default, decimals, callback)
 	local draggingSlider = false
 	local alpha = math.clamp((default - min) / (max - min), 0, 1)
-
 	local label = makeLabel(parent, title, x, y, 12, true)
 	label.Size = UDim2.new(0, w - 76, 0, 20)
-
 	local valuePill = Instance.new("TextLabel")
 	valuePill.Size = UDim2.new(0, 66, 0, 25)
 	valuePill.Position = UDim2.new(0, x + w - 66, 0, y - 3)
@@ -716,7 +716,6 @@ local function makeSlider(parent, title, x, y, w, min, max, default, decimals, c
 	corner(valuePill, 11)
 	stroke(valuePill, 0.1, theme.stroke, 1)
 	glassButton(valuePill)
-
 	local track = Instance.new("Frame")
 	track.Size = UDim2.new(0, w, 0, 13)
 	track.Position = UDim2.new(0, x, 0, y + 35)
@@ -727,7 +726,6 @@ local function makeSlider(parent, title, x, y, w, min, max, default, decimals, c
 	track.Parent = parent
 	corner(track, 13)
 	stroke(track, 0.24, theme.stroke, 1)
-
 	local fill = Instance.new("Frame")
 	fill.Size = UDim2.new(alpha, 0, 1, 0)
 	fill.BackgroundColor3 = theme.accent
@@ -736,11 +734,9 @@ local function makeSlider(parent, title, x, y, w, min, max, default, decimals, c
 	fill.ZIndex = 9
 	fill.Parent = track
 	corner(fill, 13)
-
 	local fg = Instance.new("UIGradient")
 	fg.Color = ColorSequence.new(theme.accent, theme.accent2)
 	fg.Parent = fill
-
 	local knob = Instance.new("Frame")
 	knob.Size = UDim2.new(0, 25, 0, 25)
 	knob.Position = UDim2.new(alpha, -12.5, 0.5, -12.5)
@@ -751,7 +747,6 @@ local function makeSlider(parent, title, x, y, w, min, max, default, decimals, c
 	knob.Parent = track
 	corner(knob, 25)
 	stroke(knob, 0.1, theme.stroke, 1.2)
-
 	local inner = Instance.new("Frame")
 	inner.Size = UDim2.new(0, 9, 0, 9)
 	inner.Position = UDim2.new(0.5, -4.5, 0.5, -4.5)
@@ -761,7 +756,6 @@ local function makeSlider(parent, title, x, y, w, min, max, default, decimals, c
 	inner.ZIndex = 12
 	inner.Parent = knob
 	corner(inner, 9)
-
 	local hit = Instance.new("TextButton")
 	hit.Size = UDim2.new(1, 42, 0, 44)
 	hit.Position = UDim2.new(0, -21, 0.5, -22)
@@ -769,26 +763,22 @@ local function makeSlider(parent, title, x, y, w, min, max, default, decimals, c
 	hit.Text = ""
 	hit.ZIndex = 13
 	hit.Parent = track
-
 	local function apply(mouseX)
 		local left = track.AbsolutePosition.X
 		local width = track.AbsoluteSize.X
 		local a = math.clamp((mouseX - left) / width, 0, 1)
 		local value = min + ((max - min) * a)
-
 		if decimals == 0 then
 			value = math.floor(value + 0.5)
 		else
 			value = round(value, decimals)
 		end
-
 		local newAlpha = math.clamp((value - min) / (max - min), 0, 1)
 		valuePill.Text = tostring(value)
 		tween(fill, 0.06, {Size = UDim2.new(newAlpha, 0, 1, 0)})
 		tween(knob, 0.06, {Position = UDim2.new(newAlpha, -12.5, 0.5, -12.5)})
 		callback(value)
 	end
-
 	hit.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			draggingSlider = true
@@ -796,7 +786,6 @@ local function makeSlider(parent, title, x, y, w, min, max, default, decimals, c
 			apply(input.Position.X)
 		end
 	end)
-
 	hit.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			draggingSlider = false
@@ -804,7 +793,6 @@ local function makeSlider(parent, title, x, y, w, min, max, default, decimals, c
 			tween(knob, 0.12, {Size = UDim2.new(0, 25, 0, 25), Position = UDim2.new(a, -12.5, 0.5, -12.5)})
 		end
 	end)
-
 	UIS.InputChanged:Connect(function(input)
 		if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			apply(input.Position.X)
@@ -864,37 +852,76 @@ end
 local function equipSlot(slot)
 	local char = LP.Character
 	local backpack = LP:FindFirstChildOfClass("Backpack")
-	if not char or not backpack then return end
+	if not char or not backpack then return nil end
 	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hum then return end
-
+	if not hum then return nil end
 	local tools = {}
-
 	for _, item in ipairs(backpack:GetChildren()) do
 		if item:IsA("Tool") then
 			table.insert(tools, item)
 		end
 	end
-
 	for _, item in ipairs(char:GetChildren()) do
 		if item:IsA("Tool") then
 			table.insert(tools, item)
 		end
 	end
-
 	table.sort(tools, function(a, b)
 		return a.Name:lower() < b.Name:lower()
 	end)
-
 	local tool = tools[slot]
 	if tool then
 		hum:EquipTool(tool)
+		return tool
+	end
+	return nil
+end
+
+local function activateEquipped()
+	local char = LP.Character
+	if not char then return end
+	local tool = char:FindFirstChildOfClass("Tool")
+	if tool then
+		pcall(function()
+			tool:Activate()
+		end)
 	end
 end
 
+local function runMacroQ()
+	if macroRunning then return end
+	macroRunning = true
+	task.spawn(function()
+		equipSlot(2)
+		task.wait(0.025)
+		activateEquipped()
+		task.wait(0.025)
+		equipSlot(2)
+		task.wait(0.05)
+		macroRunning = false
+	end)
+end
+
+local function runMacroE()
+	if macroRunning then return end
+	macroRunning = true
+	task.spawn(function()
+		equipSlot(1)
+		task.wait(0.025)
+		local vim = game:GetService("VirtualInputManager")
+		vim:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+		task.wait(0.015)
+		vim:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+		task.wait(0.025)
+		equipSlot(1)
+		task.wait(0.05)
+		macroRunning = false
+	end)
+end
+
 local focusCard = makeCard(bestPage, 0, 0, 285, 190)
-makeLabel(focusCard, "Aim systm", 22, 22, 18, true)
-makeLabel(focusCard, "Aimlock control", 22, 55, 13, false)
+makeLabel(focusCard, "lock systm", 22, 22, 18, true)
+makeLabel(focusCard, "lock control", 22, 55, 13, false)
 
 local fovVisibleButton = makeButton(focusCard, "FOV Hidden", 22, 88, 241, 38)
 local focusButton = makeButton(focusCard, "Enabled", 22, 136, 116, 40)
@@ -934,10 +961,14 @@ local notifyCard = makeCard(stealthPage, 0, 220, 285, 130)
 makeLabel(notifyCard, "Notifications", 22, 22, 18, true)
 local notifyButton = makeButton(notifyCard, "Enabled", 22, 76, 116, 42)
 
-local macroCard = makeCard(macroPage, 0, 0, 285, 170)
+local macroCard = makeCard(macroPage, 0, 0, 315, 230)
 makeLabel(macroCard, "Macro", 22, 22, 18, true)
-makeLabel(macroCard, "Shiftlock click = 2, E = 1", 22, 55, 13, false)
-local macroButton = makeButton(macroCard, "Enable macro", 22, 104, 241, 42)
+makeLabel(macroCard, "custom binds", 22, 55, 13, false)
+local macroButton = makeButton(macroCard, "Enable macro", 22, 92, 271, 40)
+local macroQButton = makeSmallButton(macroCard, "Q bind: " .. formatBind(macroQBind), 22, 145, 130, 38)
+local macroEButton = makeSmallButton(macroCard, "E bind: " .. formatBind(macroEBind), 163, 145, 130, 38)
+makeLabel(macroCard, "Q: 2 + click + 2", 22, 190, 12, false)
+makeLabel(macroCard, "E: 1 + E + 1", 163, 190, 12, false)
 
 local function getChar(player)
 	return player.Character
@@ -1058,13 +1089,25 @@ visualButton.MouseButton1Click:Connect(toggleVisual)
 focusButton.MouseButton1Click:Connect(function()
 	focusEnabled = not focusEnabled
 	focusButton.Text = focusEnabled and "Enabled" or "Disabled"
-	notify(focusEnabled and "Focus enabled" or "Focus disabled")
+	notify(focusEnabled and "shift enabled" or "shift disabled")
 end)
 
 macroButton.MouseButton1Click:Connect(function()
 	macroEnabled = not macroEnabled
 	macroButton.Text = macroEnabled and "Macro enabled" or "Enable macro"
 	notify(macroEnabled and "Macro enabled" or "Macro disabled")
+end)
+
+macroQButton.MouseButton1Click:Connect(function()
+	waitingForBind = "macroQ"
+	macroQButton.Text = "Press keys"
+	notify("Press macro Q bind")
+end)
+
+macroEButton.MouseButton1Click:Connect(function()
+	waitingForBind = "macroE"
+	macroEButton.Text = "Press keys"
+	notify("Press macro E bind")
 end)
 
 focusBindButton.MouseButton1Click:Connect(function()
@@ -1095,21 +1138,16 @@ local function getClosestTargetInFOV()
 	local center = Vector2.new(Cam.ViewportSize.X / 2, Cam.ViewportSize.Y / 2)
 	local closestPlayer = nil
 	local closestDistance = fov
-
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player ~= LP and isAlive(player) then
 			local root = getRoot(player)
 			local head = getHead(player)
-
 			if root and head then
 				local distanceFromCamera = (root.Position - Cam.CFrame.Position).Magnitude
-
 				if distanceFromCamera <= maxFocusDistance then
 					local screenPos, visible = Cam:WorldToViewportPoint(head.Position)
-
 					if visible and screenPos.Z > 0 then
 						local screenDistance = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-
 						if screenDistance < closestDistance then
 							closestDistance = screenDistance
 							closestPlayer = player
@@ -1119,7 +1157,6 @@ local function getClosestTargetInFOV()
 			end
 		end
 	end
-
 	return closestPlayer
 end
 
@@ -1194,10 +1231,10 @@ UIS.InputChanged:Connect(function(input)
 	end
 end)
 
-local opened = true
+local opened = false
 local busy = false
 local openSize = main.Size
-local savedPos = main.Position
+local savedPos = UDim2.new(0.5, -430, 0.5, -250)
 local closedSize = UDim2.new(0, 860, 0, 0)
 
 local function fade(amount, time)
@@ -1238,7 +1275,6 @@ local function closeGui(showMinimizedBubble)
 		Position = UDim2.new(savedPos.X.Scale, savedPos.X.Offset, savedPos.Y.Scale, savedPos.Y.Offset + 250),
 		BackgroundTransparency = 1
 	})
-
 	task.delay(0.33, function()
 		main.Visible = false
 		if showMinimizedBubble then
@@ -1293,17 +1329,9 @@ logoBubble.MouseLeave:Connect(function() tween(logoBubble, 0.14, {BackgroundTran
 
 UIS.InputBegan:Connect(function(input, processed)
 	if processed then return end
-
 	updateHeld(input, true)
-
-	if macroEnabled and isShiftLockActive() and input.KeyCode == Enum.KeyCode.E then
-		equipSlot(1)
-		return
-	end
-
 	if waitingForBind and not isModifierKey(input.KeyCode) then
 		local newBind = {mod = getHeldMod(), key = input.KeyCode}
-
 		if waitingForBind == "visual" then
 			visualBind = newBind
 			visualBindButton.Text = formatBind(visualBind)
@@ -1316,9 +1344,26 @@ UIS.InputBegan:Connect(function(input, processed)
 			focusBind = newBind
 			focusBindButton.Text = formatBind(focusBind)
 			notify("Bind saved " .. formatBind(focusBind))
+		elseif waitingForBind == "macroQ" then
+			macroQBind = newBind
+			macroQButton.Text = "Q bind: " .. formatBind(macroQBind)
+			notify("Macro Q bind saved")
+		elseif waitingForBind == "macroE" then
+			macroEBind = newBind
+			macroEButton.Text = "E bind: " .. formatBind(macroEBind)
+			notify("Macro E bind saved")
 		end
-
 		waitingForBind = nil
+		return
+	end
+
+	if not macroRunning and macroEnabled and bindMatches(macroQBind, input.KeyCode) then
+		runMacroQ()
+		return
+	end
+
+	if not macroRunning and macroEnabled and bindMatches(macroEBind, input.KeyCode) then
+		runMacroE()
 		return
 	end
 
@@ -1326,21 +1371,18 @@ UIS.InputBegan:Connect(function(input, processed)
 		toggleGuiFromKey()
 		return
 	end
-
 	if bindMatches(visualBind, input.KeyCode) then
 		toggleVisual()
 		return
 	end
-
 	if bindMatches(disableBind, input.KeyCode) then
 		disableAll()
 		return
 	end
-
 	if bindMatches(focusBind, input.KeyCode) then
 		focusEnabled = not focusEnabled
 		focusButton.Text = focusEnabled and "Enabled" or "Disabled"
-		notify(focusEnabled and "Focus enabled" or "Focus disabled")
+		notify(focusEnabled and "shift enabled" or "shift disabled")
 		return
 	end
 end)
@@ -1349,41 +1391,25 @@ UIS.InputEnded:Connect(function(input)
 	updateHeld(input, false)
 end)
 
-UIS.InputBegan:Connect(function(input, processed)
-	if processed then return end
-	if macroEnabled and isShiftLockActive() and input.UserInputType == Enum.UserInputType.MouseButton1 then
-		equipSlot(2)
-	end
-end)
-
 RunService.RenderStepped:Connect(function()
 	local shiftActive = isShiftLockActive()
-
 	fovCircle.Visible = fovVisible and shiftActive
-
 	if fovCircle.Visible then
 		fovCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
 	end
-
 	if shiftActive and not shiftLockWasActive then
-		notify("Focus active")
+		notify("lock active")
 	end
-
 	shiftLockWasActive = shiftActive
-
 	if not focusEnabled then return end
 	if not shiftActive then return end
-
 	local target = getClosestTargetInFOV()
 	if not target then return end
-
 	local head = getHead(target)
 	if not head then return end
-
 	local camPos = Cam.CFrame.Position
 	local targetPos = head.Position + Vector3.new(0, 0.05, 0)
 	local wanted = CFrame.new(camPos, targetPos)
-
 	Cam.CFrame = Cam.CFrame:Lerp(wanted, focusStrength)
 end)
 
@@ -1392,12 +1418,105 @@ main.Position = UDim2.new(0.5, -430, 0.5, 0)
 main.BackgroundTransparency = 1
 fade(1, 0)
 
-task.wait(0.1)
+local function startupLoad(seconds)
+	local holder = Instance.new("Frame")
+	holder.AnchorPoint = Vector2.new(0.5, 0.5)
+	holder.Size = UDim2.new(0, 650, 0, 120)
+	holder.Position = UDim2.new(0.5, 0, 0.5, 0)
+	holder.BackgroundTransparency = 1
+	holder.BorderSizePixel = 0
+	holder.ZIndex = 250
+	holder.Parent = gui
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0.82
+	scale.Parent = holder
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 48)
+	title.Position = UDim2.new(0, 0, 0, 10)
+	title.BackgroundTransparency = 1
+	title.Text = "loading lone v2 in " .. tostring(seconds)
+	title.Font = Enum.Font.FredokaOne
+	title.TextSize = 28
+	title.TextXAlignment = Enum.TextXAlignment.Center
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.TextTransparency = 1
+	title.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	title.TextStrokeTransparency = 0.38
+	title.ZIndex = 252
+	title.Parent = holder
+	rainbow(title)
+	local sub = Instance.new("TextLabel")
+	sub.Size = UDim2.new(1, 0, 0, 34)
+	sub.Position = UDim2.new(0, 0, 0, 61)
+	sub.BackgroundTransparency = 1
+	sub.Text = "(bypassed anticheat..) press L to reopen gui or close "
+	sub.Font = Enum.Font.FredokaOne
+	sub.TextSize = 21
+	sub.TextXAlignment = Enum.TextXAlignment.Center
+	sub.TextColor3 = Color3.fromRGB(255, 255, 255)
+	sub.TextTransparency = 1
+	sub.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	sub.TextStrokeTransparency = 0.5
+	sub.ZIndex = 252
+	sub.Parent = holder
+	rainbow(sub)
+	local glow1 = Instance.new("TextLabel")
+	glow1.Size = title.Size
+	glow1.Position = title.Position + UDim2.new(0, 0, 0, 2)
+	glow1.BackgroundTransparency = 1
+	glow1.Text = title.Text
+	glow1.Font = title.Font
+	glow1.TextSize = title.TextSize + 3
+	glow1.TextXAlignment = title.TextXAlignment
+	glow1.TextColor3 = Color3.fromRGB(255, 255, 255)
+	glow1.TextTransparency = 1
+	glow1.TextStrokeTransparency = 1
+	glow1.ZIndex = 251
+	glow1.Parent = holder
+	rainbow(glow1)
+	local glow2 = Instance.new("TextLabel")
+	glow2.Size = sub.Size
+	glow2.Position = sub.Position + UDim2.new(0, 0, 0, 2)
+	glow2.BackgroundTransparency = 1
+	glow2.Text = sub.Text
+	glow2.Font = sub.Font
+	glow2.TextSize = sub.TextSize + 3
+	glow2.TextXAlignment = sub.TextXAlignment
+	glow2.TextColor3 = Color3.fromRGB(255, 255, 255)
+	glow2.TextTransparency = 1
+	glow2.TextStrokeTransparency = 1
+	glow2.ZIndex = 251
+	glow2.Parent = holder
+	rainbow(glow2)
+	tween(scale, 0.38, {Scale = 1})
+	tween(title, 0.32, {TextTransparency = 0})
+	tween(sub, 0.42, {TextTransparency = 0})
+	tween(glow1, 0.32, {TextTransparency = 0.78})
+	tween(glow2, 0.42, {TextTransparency = 0.82})
+	tween(blur, 0.3, {Size = 8})
+	local floatTween = TweenService:Create(holder, TweenInfo.new(0.85, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {Position = UDim2.new(0.5, 0, 0.5, -10)})
+	floatTween:Play()
+	for i = seconds, 1, -1 do
+		title.Text = "loading lone v2  in " .. tostring(i)
+		glow1.Text = title.Text
+		task.wait(1)
+	end
+	floatTween:Cancel()
+	tween(holder, 0.28, {Position = UDim2.new(0.5, 0, 0.5, -30)})
+	tween(scale, 0.28, {Scale = 0.82})
+	tween(title, 0.22, {TextTransparency = 1})
+	tween(sub, 0.22, {TextTransparency = 1})
+	tween(glow1, 0.22, {TextTransparency = 1})
+	tween(glow2, 0.22, {TextTransparency = 1})
+	task.wait(0.32)
+	holder:Destroy()
+end
 
-opened = false
-savedPos = UDim2.new(0.5, -430, 0.5, -250)
-openGui()
-
-task.delay(0.6, function()
-	notify("Hi @" .. LP.Name .. " welcome back g")
+task.spawn(function()
+	task.wait(0.15)
+	startupLoad(5)
+	openGui()
+	task.delay(0.6, function()
+		notify("Hi @" .. LP.Name .. " welcome back")
+	end)
 end)
